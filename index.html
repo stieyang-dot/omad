@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#6B9080" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>OMAD</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1 id="view-title">Today</h1>
+    <span class="header-date" id="header-date"></span>
+  </header>
+
+  <main id="app">
+
+    <!-- ============ TODAY ============ -->
+    <section class="view active" id="view-today">
+      <div class="card fast-card">
+        <div class="card-head">
+          <span>Time since last meal</span>
+          <button class="link-btn hidden" id="edit-last-meal">Edit time</button>
+        </div>
+        <div class="big-stat" id="fast-elapsed">—</div>
+        <p class="muted-sm" id="fast-last">No meals logged yet.</p>
+        <div class="log-actions">
+          <button class="btn btn-primary" id="btn-log-now">Log meal now</button>
+          <button class="btn btn-ghost" id="btn-log-toggle">＋ at a specific time</button>
+        </div>
+        <div class="time-picker hidden" id="time-picker">
+          <input type="datetime-local" id="custom-meal-time" />
+          <button class="btn btn-primary btn-sm" id="btn-log-custom">Save</button>
+        </div>
+      </div>
+
+      <div class="card quick-weight">
+        <div class="card-head">
+          <span>Today's weight</span>
+          <div class="unit-toggle" data-toggle="unit-today">
+            <button data-unit="kg">kg</button>
+            <button data-unit="lbs">lbs</button>
+          </div>
+        </div>
+        <div class="weight-input-row">
+          <input type="number" inputmode="decimal" step="0.1" id="quick-weight-input" placeholder="0.0" />
+          <span class="unit-suffix" id="quick-weight-unit">kg</span>
+          <button class="btn btn-primary btn-sm" id="btn-add-weight">Add</button>
+        </div>
+        <p class="muted-sm" id="quick-weight-latest"></p>
+      </div>
+
+      <div class="card cd-card">
+        <div class="card-head">
+          <span>Countdown</span>
+          <button class="link-btn hidden" id="cd-cancel">Reset</button>
+        </div>
+        <div id="cd-setup">
+          <div class="cd-inputs">
+            <div class="cd-field"><label>Hours</label><input type="number" inputmode="numeric" min="0" step="1" id="cd-hours" placeholder="0" /></div>
+            <div class="cd-field"><label>Minutes</label><input type="number" inputmode="numeric" min="0" max="59" step="1" id="cd-mins" placeholder="0" /></div>
+            <button class="btn btn-primary btn-sm" id="cd-start">Start</button>
+          </div>
+        </div>
+        <div id="cd-running" class="hidden">
+          <div class="big-stat" id="cd-display">0h 00m 00s</div>
+          <p class="muted-sm" id="cd-sub"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FASTING LOG ============ -->
+    <section class="view" id="view-log">
+      <p class="muted-sm section-hint">Tap any entry to edit its time or delete it. Fast lengths recalculate automatically.</p>
+      <ul class="entry-list" id="meal-list"></ul>
+      <button class="fab" id="fab-add-meal" title="Add a past meal">＋</button>
+    </section>
+
+    <!-- ============ WEIGHT ============ -->
+    <section class="view" id="view-weight">
+      <div class="card">
+        <div class="card-head">
+          <span>Trend</span>
+          <div class="unit-toggle" data-toggle="unit-weight">
+            <button data-unit="kg">kg</button>
+            <button data-unit="lbs">lbs</button>
+          </div>
+        </div>
+        <div id="weight-chart" class="chart-wrap"></div>
+        <div class="weight-stats" id="weight-stats"></div>
+      </div>
+      <p class="muted-sm section-hint">Tap an entry to edit or delete it.</p>
+      <ul class="entry-list" id="weight-list"></ul>
+      <button class="fab" id="fab-add-weight" title="Add a past weigh-in">＋</button>
+    </section>
+
+    <!-- ============ PROGRESS ============ -->
+    <section class="view" id="view-progress">
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="card">
+        <div class="card-head">
+          <span id="cal-month-label">Month</span>
+          <div class="cal-nav">
+            <button id="cal-prev" class="icon-btn">‹</button>
+            <button id="cal-next" class="icon-btn">›</button>
+          </div>
+        </div>
+        <div class="calendar" id="calendar"></div>
+        <p class="muted-sm legend"><span class="dot green"></span> 24h fast &nbsp; <span class="dot yellow"></span> 1 meal &nbsp; <span class="dot purple"></span> 2+ meals</p>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="view" id="view-settings">
+      <div class="card">
+        <div class="setting-row">
+          <span>Default weight unit</span>
+          <div class="unit-toggle" data-toggle="unit-settings">
+            <button data-unit="kg">kg</button>
+            <button data-unit="lbs">lbs</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span>Theme</span>
+          <div class="unit-toggle" data-toggle="theme">
+            <button data-theme-opt="light">Light</button>
+            <button data-theme-opt="dark">Dark</button>
+          </div>
+        </div>
+      </div>
+      <p class="muted-sm about">OMAD · all data stays on this device.</p>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-view="today"><span class="tab-ico">◔</span>Today</button>
+    <button class="tab" data-view="log"><span class="tab-ico">≡</span>Log</button>
+    <button class="tab" data-view="weight"><span class="tab-ico">⚖</span>Weight</button>
+    <button class="tab" data-view="progress"><span class="tab-ico">▦</span>Progress</button>
+    <button class="tab" data-view="settings"><span class="tab-ico">⚙</span>Settings</button>
+  </nav>
+
+  <!-- Edit modal -->
+  <div class="modal-backdrop hidden" id="modal">
+    <div class="modal">
+      <h2 id="modal-title">Edit</h2>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button class="btn btn-danger btn-sm" id="modal-delete">Delete</button>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
