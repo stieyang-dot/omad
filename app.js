@@ -161,10 +161,31 @@
   }
 
   // ---------- Meals / weights ----------
-  async function logMeal(date) {
-    await DB.put('meals', { id: DB.uid(), timestamp: date.toISOString() });
+  async function logMeal(date, sugar) {
+    await DB.put('meals', { id: DB.uid(), timestamp: date.toISOString(), sugar: sugar });
     meals = sortByTime(await DB.getAll('meals'));
     renderToday();
+  }
+
+  // ---------- Sugar picker helpers ----------
+  function wireSugarPair(sugarEl, noSugarEl) {
+    sugarEl.addEventListener('change', () => { if (sugarEl.checked) noSugarEl.checked = false; });
+    noSugarEl.addEventListener('change', () => { if (noSugarEl.checked) sugarEl.checked = false; });
+  }
+  // returns true (had sugar), false (no sugar), or null (nothing picked)
+  function readSugarPair(sugarEl, noSugarEl) {
+    if (sugarEl.checked) return true;
+    if (noSugarEl.checked) return false;
+    return null;
+  }
+  function setSugarPair(sugarEl, noSugarEl, val) {
+    sugarEl.checked = val === true;
+    noSugarEl.checked = val === false;
+  }
+  function resetTodaySugar() {
+    $('#chk-sugar').checked = false;
+    $('#chk-nosugar').checked = false;
+    $('#sugar-pick').classList.remove('needs');
   }
   async function addWeight(date, kg) {
     await DB.put('weights', { id: DB.uid(), timestamp: date.toISOString(), weightKg: kg });
@@ -178,9 +199,12 @@
     list.innerHTML = mealsWithGaps().slice().reverse().map(m => {
       const d = new Date(m.timestamp);
       const sub = m.gapMs == null ? 'First entry' : fmtElapsed(m.gapMs) + ' since previous meal';
+      const tag = m.sugar === false
+        ? '<span class="entry-badge badge-nosugar">no sugar</span>'
+        : (m.sugar === true ? '<span class="entry-badge badge-sugar">sugar</span>' : '');
       return '<li class="entry-item" data-id="' + m.id + '" data-type="meal">' +
         '<div class="entry-main"><span class="entry-title">' + fmtClock(d) + ' · ' + fmtDay(d) + '</span>' +
-        '<span class="entry-sub">' + sub + '</span></div></li>';
+        '<span class="entry-sub">' + sub + '</span></div>' + tag + '</li>';
     }).join('');
   }
 
@@ -240,23 +264,35 @@
   }
 
   // ---------- PROGRESS ----------
-  const DAY_MS = 86400000;
-  // Per-day colour: purple = 2+ meals, green = exactly 1 meal with a >=24h fast, yellow = 1 meal otherwise.
+  // Per-day colour, purely by meals logged that calendar day (+ a blue stripe when no sugar):
+  //   0 meals  -> gb     (green + blue: a no-meal day is a full fast, and has no sugar)
+  //   1 meal   -> yellow (had sugar)  /  yb (yellow + blue: no sugar)
+  //   2+ meals -> purple (any meal had sugar)  /  pb (purple + blue: none had sugar)
+  // Blue (no sugar) never appears alone. Green days are the streak days.
   function dayStatuses() {
     const byDay = {};
-    mealsWithGaps().forEach(m => {
+    meals.forEach(m => {
       const k = dayKey(new Date(m.timestamp));
-      if (!byDay[k]) byDay[k] = { count: 0, achieved: false };
+      if (!byDay[k]) byDay[k] = { count: 0, anySugar: false };
       byDay[k].count++;
-      if (m.gapMs != null && m.gapMs >= DAY_MS) byDay[k].achieved = true;
+      if (m.sugar !== false) byDay[k].anySugar = true; // undefined/true => treat as had sugar
     });
     const status = {};
     Object.keys(byDay).forEach(k => {
       const d = byDay[k];
-      if (d.count > 1) status[k] = 'purple';
-      else if (d.achieved) status[k] = 'green';
-      else status[k] = 'yellow';
+      const noSugar = !d.anySugar;
+      if (d.count >= 2) status[k] = noSugar ? 'pb' : 'purple';
+      else status[k] = noSugar ? 'yb' : 'yellow';
     });
+    // Any calendar day with no meal (from the first logged meal through today) = green + blue.
+    if (meals.length) {
+      const start = new Date(meals[0].timestamp); start.setHours(0, 0, 0, 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      for (let dt = new Date(start); dt <= today; dt.setDate(dt.getDate() + 1)) {
+        const k = dayKey(dt);
+        if (!status[k]) status[k] = 'gb';
+      }
+    }
     return status;
   }
   function computeStreaks(days) {
@@ -279,7 +315,7 @@
 
   function renderProgress() {
     const status = dayStatuses();
-    const greenDays = new Set(Object.keys(status).filter(k => status[k] === 'green'));
+    const greenDays = new Set(Object.keys(status).filter(k => status[k] === 'gb'));
     const streaks = computeStreaks(greenDays);
     const gaps = mealsWithGaps().map(m => m.gapMs).filter(g => g != null);
     const avg = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0;
@@ -329,16 +365,27 @@
   let modalCtx = null;
   function showModal() { $('#modal').classList.remove('hidden'); }
   function hideModal() { $('#modal').classList.add('hidden'); modalCtx = null; }
+  function sugarRowHtml() {
+    return '<div class="modal-body-row"><label>This meal had</label>' +
+      '<div class="sugar-pick" id="modal-sugar-pick">' +
+      '<label class="chk"><input type="checkbox" id="modal-sugar" /> Sugar</label>' +
+      '<label class="chk"><input type="checkbox" id="modal-nosugar" /> No sugar</label>' +
+      '</div></div>';
+  }
 
   function openMealEdit(id) {
     const meal = meals.find(x => x.id === id);
     if (!meal) return;
     modalCtx = { type: 'meal', id };
     $('#modal-delete').classList.remove('hidden');
-    $('#modal-title').textContent = 'Edit meal time';
+    $('#modal-title').textContent = 'Edit meal';
     $('#modal-body').innerHTML =
       '<div class="modal-body-row"><label>Date &amp; time eaten</label>' +
-      '<input type="datetime-local" id="modal-dt" value="' + toLocalInput(new Date(meal.timestamp)) + '"></div>';
+      '<input type="datetime-local" id="modal-dt" value="' + toLocalInput(new Date(meal.timestamp)) + '"></div>' +
+      sugarRowHtml();
+    const sEl = $('#modal-sugar'), nEl = $('#modal-nosugar');
+    wireSugarPair(sEl, nEl);
+    setSugarPair(sEl, nEl, meal.sugar === false ? false : (meal.sugar === true ? true : null));
     showModal();
   }
   function openWeightEdit(id) {
@@ -360,7 +407,9 @@
     $('#modal-title').textContent = 'Add a past meal';
     $('#modal-body').innerHTML =
       '<div class="modal-body-row"><label>Date &amp; time eaten</label>' +
-      '<input type="datetime-local" id="modal-dt" value="' + toLocalInput(new Date()) + '"></div>';
+      '<input type="datetime-local" id="modal-dt" value="' + toLocalInput(new Date()) + '"></div>' +
+      sugarRowHtml();
+    wireSugarPair($('#modal-sugar'), $('#modal-nosugar'));
     showModal();
   }
   function openAddWeight() {
@@ -381,8 +430,11 @@
     if (!dtVal) return;
     const date = new Date(dtVal);
     if (modalCtx.type === 'meal') {
+      const sugar = readSugarPair($('#modal-sugar'), $('#modal-nosugar'));
+      if (sugar === null) { $('#modal-sugar-pick').classList.add('needs'); return; }
       const meal = meals.find(x => x.id === modalCtx.id);
       meal.timestamp = date.toISOString();
+      meal.sugar = sugar;
       await DB.put('meals', meal);
       meals = sortByTime(await DB.getAll('meals'));
     } else {
@@ -401,7 +453,9 @@
     if (!dtVal) return;
     const date = new Date(dtVal);
     if (modalCtx.type === 'meal-new') {
-      await logMeal(date);
+      const sugar = readSugarPair($('#modal-sugar'), $('#modal-nosugar'));
+      if (sugar === null) { $('#modal-sugar-pick').classList.add('needs'); return; }
+      await logMeal(date, sugar);
     } else {
       const val = parseFloat($('#modal-weight').value);
       if (isNaN(val)) { hideModal(); return; }
@@ -427,15 +481,27 @@
   function bindEvents() {
     $$('.tab').forEach(t => t.addEventListener('click', () => switchView(t.dataset.view)));
 
-    $('#btn-log-now').addEventListener('click', () => logMeal(new Date()));
+    wireSugarPair($('#chk-sugar'), $('#chk-nosugar'));
+
+    $('#btn-log-now').addEventListener('click', async () => {
+      const sugar = readSugarPair($('#chk-sugar'), $('#chk-nosugar'));
+      if (sugar === null) { $('#sugar-pick').classList.add('needs'); return; }
+      await logMeal(new Date(), sugar);
+      resetTodaySugar();
+    });
     $('#btn-log-toggle').addEventListener('click', () => {
       const p = $('#time-picker');
       p.classList.toggle('hidden');
       if (!p.classList.contains('hidden')) $('#custom-meal-time').value = toLocalInput(new Date());
     });
-    $('#btn-log-custom').addEventListener('click', () => {
+    $('#btn-log-custom').addEventListener('click', async () => {
       const v = $('#custom-meal-time').value;
-      if (v) { logMeal(new Date(v)); $('#time-picker').classList.add('hidden'); }
+      if (!v) return;
+      const sugar = readSugarPair($('#chk-sugar'), $('#chk-nosugar'));
+      if (sugar === null) { $('#sugar-pick').classList.add('needs'); return; }
+      await logMeal(new Date(v), sugar);
+      resetTodaySugar();
+      $('#time-picker').classList.add('hidden');
     });
     $('#edit-last-meal').addEventListener('click', () => {
       const last = meals[meals.length - 1];
@@ -500,7 +566,12 @@
     $('#header-date').textContent = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
     bindEvents();
     switchView('today');
-    tickTimer = setInterval(() => { if (currentView === 'today') tick(); }, 1000);
+    let secs = 0;
+    tickTimer = setInterval(() => {
+      secs++;
+      if (currentView === 'today') tick();
+      else if (currentView === 'progress' && secs % 30 === 0) renderProgress(); // flip days green as 24h passes
+    }, 1000);
 
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('service-worker.js').catch(() => {});

@@ -1,5 +1,5 @@
 /* OMAD service worker — offline caching */
-const CACHE = 'omad-v3';
+const CACHE = 'omad-v6';
 const ASSETS = [
   './',
   './index.html',

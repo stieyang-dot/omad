@@ -29,6 +29,11 @@
         </div>
         <div class="big-stat" id="fast-elapsed">—</div>
         <p class="muted-sm" id="fast-last">No meals logged yet.</p>
+        <div class="sugar-pick" id="sugar-pick">
+          <span class="sugar-label">This meal had:</span>
+          <label class="chk"><input type="checkbox" id="chk-sugar" /> Sugar</label>
+          <label class="chk"><input type="checkbox" id="chk-nosugar" /> No sugar</label>
+        </div>
         <div class="log-actions">
           <button class="btn btn-primary" id="btn-log-now">Log meal now</button>
           <button class="btn btn-ghost" id="btn-log-toggle">＋ at a specific time</button>
@@ -111,7 +116,7 @@
           </div>
         </div>
         <div class="calendar" id="calendar"></div>
-        <p class="muted-sm legend"><span class="dot green"></span> 24h fast &nbsp; <span class="dot yellow"></span> 1 meal &nbsp; <span class="dot purple"></span> 2+ meals</p>
+        <p class="muted-sm legend"><span class="dot green"></span> no meals (fast) &nbsp; <span class="dot blue"></span> no sugar &nbsp; <span class="dot yellow"></span> 1 meal &nbsp; <span class="dot purple"></span> 2+ meals</p>
       </div>
     </section>
 

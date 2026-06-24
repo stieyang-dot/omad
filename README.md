@@ -5,10 +5,15 @@ A small, fully-offline PWA (progressive web app). All data is stored **on your d
 ## Features
 - **Time since last meal** — the Today screen counts **up** from your last meal (no target, no ring). Under 24h it reads `Xh YYm`; once past a day it reads `Xd YYh ZZm`. Tap **Edit time** to move the start earlier/later.
 - **Countdown** — a separate card where you enter any **hours + minutes** and it counts down (independent of the fasting tracker). It keeps running if you leave and reopen the app.
-- **Fasting / OMAD log** — log the exact time a meal was eaten (now or a past time). Each entry shows the time since the previous meal. Fully editable and deletable.
+- **Fasting / OMAD log** — log the exact time a meal was eaten (now or a past time), tagging each meal **Sugar** or **No sugar** (you pick one, no default). Each entry shows the time since the previous meal and its sugar tag. Fully editable and deletable.
 - **Weight tracking** — log weigh-ins and see a trend graph with an up/down trend indicator and net change. Editable and deletable.
 - **kg ⇄ lbs** — flip the unit toggle anywhere and every number converts instantly. Weights are stored canonically in kg so there's no rounding drift.
-- **Progress** — fast streak (consecutive days with a 24h+ fast), longest streak, average & longest fast, and a colour-coded month calendar: **green** = a 24h fast achieved, **yellow** = one meal logged, **purple** = more than one meal logged. Streaks count green days only.
+- **Progress** — fast streak (consecutive days with a 24h+ fast), longest streak, average & longest fast, and a colour-coded month calendar:
+  - 🔵 **blue** = ate that day, no sugar
+  - 🟡 **yellow** = ate that day, had sugar
+  - 🟢 **green** = a meal was followed by a 24h fast (credited to that meal's day, flips live in real time) — shown **split** alongside the meal's sugar colour
+  - 🟣 **purple** = 2+ meals that day
+  - Streaks count green (24h-fast) days only.
 - **Light / dark theme**, soft sage-and-sand palette.
 
 ## Files
