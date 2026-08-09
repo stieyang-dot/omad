@@ -1,5 +1,5 @@
-/* OMAD service worker — offline caching */
-const CACHE = 'omad-v7';
+/* OMAD service worker — offline caching (network-first so updates apply automatically when online) */
+const CACHE = 'omad-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -23,13 +23,15 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Network-first: when online, always fetch the latest and refresh the cache;
+// fall back to the cached copy only when offline. Keeps the app current without stale-cache fights.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
+    fetch(e.request).then((res) => {
       const copy = res.clone();
       caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
       return res;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => caches.match(e.request).then((hit) => hit || caches.match('./index.html')))
   );
 });
