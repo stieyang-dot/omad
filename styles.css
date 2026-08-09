@@ -86,6 +86,9 @@ body {
 .sugar-label { color: var(--muted); font-size: 0.85rem; }
 .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer; }
 .chk input { width: 18px; height: 18px; accent-color: var(--primary); }
+.chk-row { width: 100%; justify-content: flex-start; font-size: 0.98rem; font-weight: 550; }
+#btn-reset { width: 100%; }
+#reset-note { margin: 10px 0 0; text-align: center; }
 
 /* ---------- Buttons ---------- */
 .log-actions { display: flex; flex-direction: column; gap: 8px; align-items: center; }

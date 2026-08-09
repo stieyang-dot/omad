@@ -8,6 +8,7 @@
   let settings = { key: 'app', displayUnit: 'kg', theme: 'light', countdownEnd: null };
   let meals = [];    // sorted ascending by time
   let weights = [];  // sorted ascending by time
+  let vitaminDays = new Set(); // dayKeys where multivitamins were taken
   let currentView = 'today';
   let calMonth = null;
   let tickTimer = null;
@@ -61,6 +62,21 @@
     if (s) settings = Object.assign(settings, s);
     meals = sortByTime(await DB.getAll('meals'));
     weights = sortByTime(await DB.getAll('weights'));
+    vitaminDays = new Set((await DB.getAll('vitamins')).map(v => v.day));
+  }
+  async function setVitamins(taken) {
+    const k = dayKey(new Date());
+    if (taken) { await DB.put('vitamins', { day: k, taken: true }); vitaminDays.add(k); }
+    else { await DB.remove('vitamins', k); vitaminDays.delete(k); }
+  }
+  async function resetAllData() {
+    const ok = window.confirm('Reset ALL data?\n\nThis permanently deletes every meal, weigh-in, vitamin record, and setting on this device. It cannot be undone.');
+    if (!ok) return;
+    await DB.clear('meals');
+    await DB.clear('weights');
+    await DB.clear('vitamins');
+    await DB.clear('settings');
+    location.reload();
   }
   async function saveSettings() { await DB.put('settings', settings); }
 
@@ -96,6 +112,7 @@
     $('#quick-weight-latest').textContent = latest
       ? 'Last: ' + fmtWeight(latest.weightKg) + ' ' + settings.displayUnit + ' · ' + fmtDay(new Date(latest.timestamp))
       : 'No weigh-ins yet.';
+    $('#chk-vitamins').checked = vitaminDays.has(dayKey(new Date()));
     renderCountdownState();
     tick();
   }
@@ -510,6 +527,9 @@
 
     $('#cd-start').addEventListener('click', startCountdown);
     $('#cd-cancel').addEventListener('click', cancelCountdown);
+
+    $('#chk-vitamins').addEventListener('change', (e) => setVitamins(e.target.checked));
+    $('#btn-reset').addEventListener('click', resetAllData);
 
     $('#btn-add-weight').addEventListener('click', async () => {
       const val = parseFloat($('#quick-weight-input').value);
